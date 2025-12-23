@@ -22,7 +22,7 @@ CONFIG = {
     'translation_noise': 0.1,
     
     #Detection noise
-    'detection_noise': 0.01,
+    'detection_noise': 1.0,
     
     #Refinement parameters
     'refinement_enabled': True,

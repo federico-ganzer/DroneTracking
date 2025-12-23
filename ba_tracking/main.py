@@ -101,7 +101,9 @@ id_to_idx = {}
 X_static_true = np.array([[15.0, 15.0, 80.0],
                           [20.0, 10.0, 78.0],
                           [10.0, 20.0, 82.0],
-                          [18.0, 18.0, 79.0],], dtype=float) 
+                          [18.0, 18.0, 79.0],
+                          [0, 0, 100],
+                          [5, 5, 50]], dtype=float) 
 
 N_static = X_static_true.shape[0]
 static_obs_per_cam = [ [[] for _ in range(N_static)]  # cam 0
