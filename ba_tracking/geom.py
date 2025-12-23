@@ -21,7 +21,9 @@ def perturb_R(R_true: np.ndarray, angle_sigma: float):
     return R_perturb
 
 def perturb_t(t_true: np.ndarray, sigma: float):
-    return t_true + np.random.randn(3) * sigma
+    t_perturbed = t_true.copy()      # avoid modifying original
+    t_perturbed[1] += np.random.randn() * sigma
+    return t_perturbed
 
 def project_p(K, R, t, X):
     """Project 3D points X into camera with intrinsics K, rotation R and translation t.

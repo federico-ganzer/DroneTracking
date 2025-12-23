@@ -238,7 +238,7 @@ for frame in range(num_frames):
 
             C1 = c0
             C2 = c0 + s_opt[1] * baseline_u
-            print(C1 - C2)
+
             t1 = -R1 @ C1
             t2 = -R2 @ C2
 

@@ -64,6 +64,7 @@ class PlotState:
 
         C1_est = -R1.T @ t1
         C2_est = -R2.T @ t2
+        
         C1_gt  = -self.R_true[0].T @ self.t_true[0]
         C2_gt  = -self.R_true[1].T @ self.t_true[1]
 

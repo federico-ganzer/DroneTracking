@@ -26,7 +26,7 @@ CONFIG = {
     
     #Refinement parameters
     'refinement_enabled': True,
-    'stop_refinement': 10000,
-    'ba_window_size': 40,
-    'ba_interval' : 20
+    'stop_refinement': 200,
+    'ba_window_size': 50,
+    'ba_interval' : 10
 }
