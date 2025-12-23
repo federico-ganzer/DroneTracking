@@ -18,15 +18,15 @@ CONFIG = {
     'frame_rate': 30,
     
     #Perturbation parameters
-    'rotation_noise_deg': 1.0,
+    'rotation_noise_deg': 3.0,
     'translation_noise': 0.5,
     
     #Detection noise
-    'detection_noise': 1.0,
+    'detection_noise': 0.5,
     
     #Refinement parameters
     'refinement_enabled': True,
-    'stop_refinement': 200,
-    'ba_window_size': 50,
-    'ba_interval' : 10
+    'stop_refinement': 100,
+    'ba_window_size': 30,
+    'ba_interval' : 5
 }

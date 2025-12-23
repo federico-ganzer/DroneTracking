@@ -137,7 +137,7 @@ def run_constrained_ba(
             rvecs_init,
             s_init,
             0.01,   # lambda_smooth
-            0.2,    # lambda_pose
+            0.05,    # lambda_pose
         ),
         method="trf",
         loss="huber",
@@ -146,7 +146,7 @@ def run_constrained_ba(
         ftol=1e-4,
         xtol=1e-4,
         gtol=1e-3,
-        max_nfev=200,
+        max_nfev=100,
         verbose=0,
     )
 

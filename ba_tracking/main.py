@@ -97,12 +97,15 @@ obs_per_cam = [dict() for _ in range(n_cams)]
 id_to_idx = {}
 
 #These are additional static points to be triangulated to stabilise and constrain BA. Various depths and positions need to be used
-X_static_true = np.array([[15.0, 15.0, 80.0],
-                          [20.0, 10.0, 75.0],
-                          [10.0, 20.0, 82.0],
-                          [18.0, 18.0, 79.0],
-                          [0, 0, 100],
-                          [5, 5, 50]], dtype=float) 
+X_static_true = np.array([
+    [-10, -10, 40],
+    [-10,  10, 40],
+    [ 10, -10, 40],
+    [ 10,  10, 40],
+    [  0,   0, 30],
+    [  0,   0, 60],
+], dtype=float)
+
 
 def initialize_static_points(X_static_true):
     N_static = X_static_true.shape[0]

@@ -57,13 +57,14 @@ def run_single_trial(config, trial_num=0, verbose=False):
     
     # Initialize static points
     X_static_true = np.array([
-        [15.0, 15.0, 80.0],
-        [20.0, 10.0, 75.0],
-        [10.0, 20.0, 82.0],
-        [18.0, 18.0, 79.0],
-        [0, 0, 100],
-        [5, 5, 50]
-    ], dtype=float)
+    [-10, -10, 40],
+    [-10,  10, 40],
+    [ 10, -10, 40],
+    [ 10,  10, 40],
+    [  0,   0, 30],
+    [  0,   0, 60],
+], dtype=float)
+
     
     N_static = X_static_true.shape[0]
     static_obs_per_cam = [[[] for _ in range(N_static)] for _ in range(n_cams)]
