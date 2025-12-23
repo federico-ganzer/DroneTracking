@@ -51,13 +51,13 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
   Generates the ground‑truth circular drone trajectory given the kinematic parameters in `CONFIG`.
 
 - **`geom.py`**  
-  Geometry utilities: pose construction from baseline, Rodrigues conversions, projection, triangulation, and rotation‑error computation. [file:9248247d-dd84-4b88-bc29-b5430320dfb0]
+  Geometry utilities: pose construction from baseline, Rodrigues conversions, projection, triangulation, and rotation‑error computation.
 
 - **`plotter.py`**  
-  Real‑time visualization helper used by `main.py` to update the 3D trajectory, camera frustums, and error plots as the sequence progresses. [file:9da1e34a-ae78-4e47-b026-2a6fddba39c9]
+  Real‑time visualization helper used by `main.py` to update the 3D trajectory, camera frustums, and error plots as the sequence progresses.
 
 - **`background_subtraction.py`** (optional)  
-  Contains utilities for simple foreground/background separation in real image streams, which can be used when extending the framework to real data. [file:36a337cf-2899-4e78-9316-7125b343ec4f]
+  Contains utilities for simple foreground/background separation in real image streams, which can be used when extending the framework to real data.
 
 - **`config.py`**  
   Central configuration dictionary controlling camera intrinsics, baseline length, trajectory parameters, noise levels, and BA scheduling (window size, interval, refinement stop frame).
