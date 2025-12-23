@@ -24,6 +24,7 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
   - visualizes the true and estimated trajectory, the camera frustums, and per‑frame rotation/position errors in real time via `PlotState`.
 
 - **`ba_experiment.py`**  (HEAVILY VIBE-CODED)
+  
   Provides a full experiment driver to *benchmark* BA against a non‑BA baseline:
   - `run_single_trial` runs one noisy sequence, either with BA enabled or with refinement disabled, and records:
     - per‑frame trajectory error,
