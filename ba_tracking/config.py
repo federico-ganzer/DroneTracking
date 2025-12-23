@@ -18,8 +18,8 @@ CONFIG = {
     'frame_rate': 30,
     
     #Perturbation parameters
-    'rotation_noise_deg': 1.0,
-    'translation_noise': 0.1,
+    'rotation_noise_deg': 2.0,
+    'translation_noise': 0.2,
     
     #Detection noise
     'detection_noise': 1.0,

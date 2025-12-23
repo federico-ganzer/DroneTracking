@@ -6,12 +6,6 @@ import geom
 from config import CONFIG
 from trajectory_gen import generate_circular_trajectory
 import cv2 as cv
-'''
-TODO: FIX STATIC POINTS IN BA- What is going on ???
-
-DO NOT LET BA MODIFY STATIC POINTS.
-
-'''
 
 n_cams = 2
 c0 = np.array([0., 0., 0.])
@@ -26,27 +20,31 @@ K = np.array([[f, 0, 0],
 s_true = np.array([0.0, 20.0])
 rvec_true = np.zeros((n_cams, 3), dtype=float)
 
-R_true, t_true = [], [] # actual poses
-for i in range(n_cams):
-    R_i, t_i = geom.pose_from_baseline(
-        baseline_dir=baseline_u, c0=c0, rvec=rvec_true[i], s=s_true[i]
-    )
-    R_true.append(R_i)
-    t_true.append(t_i)
+def initialise_camera_poses(K, s_true, rvec_true, baseline_dir, c0):
+    R_true, t_true = [], [] # actual poses
+    for i in range(n_cams):
+        R_i, t_i = geom.pose_from_baseline(baseline_dir=baseline_dir,
+                                           c0=c0,
+                                           rvec=rvec_true[i],
+                                           s=s_true[i])
+        R_true.append(R_i)
+        t_true.append(t_i)
 
-R_init = [geom.perturb_R(R, angle_sigma=np.deg2rad(CONFIG['rotation_noise_deg'])) for R in R_true]
-t_init = [geom.perturb_t(t, sigma=CONFIG['translation_noise']) for t in t_true]
+    R_init = [geom.perturb_R(R, angle_sigma=np.deg2rad(CONFIG['rotation_noise_deg'])) for R in R_true]
+    t_init = [geom.perturb_t(t, sigma=CONFIG['translation_noise']) for t in t_true]
 
-# current working poses (will be updated by BA)
-R1, R2 = R_true[0], R_init[1] 
-t1, t2 = t_true[0], t_init[1] # measured misclaibrated relative pose used
+    # current working poses (will be updated by BA)
+    R1, R2 = R_true[0], R_init[1] 
+    t1, t2 = t_true[0], t_init[1] # measured misclaibrated relative pose used
 
-cam1 = PinholeCamera(K, (R1, t1))
-cam2 = PinholeCamera(K, (R2, t2))
+    return R1, R2, t1, t2, R_true, t_true
+
+R1, R2, t1, t2, R_true, t_true = initialise_camera_poses(K, s_true, rvec_true, baseline_dir=baseline_u, c0=c0)
 
 X_true = generate_circular_trajectory(CONFIG)
 num_frames = CONFIG['num_frames']
 X_est = np.zeros_like(X_true)
+
 #region Plot Set
 plt.ion()
 fig = plt.figure()
@@ -97,34 +95,38 @@ est_lines_2  = plot_frustum(ax, fr_est_2,  color="red",   alpha=0.9)
 obs_per_cam = [dict() for _ in range(n_cams)]
 id_to_idx = {}
 
-#This is a static reference point used in BA for both cameras, in the real application this can be a third point or a reference.
+#These are additional static points to be triangulated to stabilise and constrain BA. Various depths and positions need to be used
 X_static_true = np.array([[15.0, 15.0, 80.0],
-                          [20.0, 10.0, 78.0],
+                          [20.0, 10.0, 75.0],
                           [10.0, 20.0, 82.0],
                           [18.0, 18.0, 79.0],
                           [0, 0, 100],
                           [5, 5, 50]], dtype=float) 
 
-N_static = X_static_true.shape[0]
-static_obs_per_cam = [ [[] for _ in range(N_static)]  # cam 0
-                       for _ in range(n_cams) ] 
+def initialize_static_points(X_static_true):
+    N_static = X_static_true.shape[0]
+    static_obs_per_cam = [ [[] for _ in range(N_static)]  # cam 0
+                           for _ in range(n_cams) ] 
 
-X_static_est = np.zeros_like(X_static_true)
-for j in range(N_static):
-    Xs = X_static_true[j]
-    p1_stat = geom.project_p(K, R_true[0], t_true[0], Xs)
-    p2_stat = geom.project_p(K, R_true[1], t_true[1], Xs)
-    if CONFIG['detection_noise']:
-        noise = CONFIG['detection_noise']
-        p1_stat += np.random.randn(2) * noise
-        p2_stat += np.random.randn(2) * noise
-    static_obs_per_cam[1][j].append(p2_stat.reshape(2, 1))
-    static_obs_per_cam[0][j].append(p1_stat.reshape(2, 1))
-    X_static_est[j] = geom.triangulate_points(K, R1, t1,
-                                              K, R2, t2,
-                                              p1_stat.reshape(2,1),
-                                              p2_stat.reshape(2,1))[:, 0]
-    
+    X_static_est = np.zeros_like(X_static_true)
+    for j in range(N_static):
+        Xs = X_static_true[j]
+        p1_stat = geom.project_p(K, R_true[0], t_true[0], Xs)
+        p2_stat = geom.project_p(K, R_true[1], t_true[1], Xs)
+        if CONFIG['detection_noise']:
+            noise = CONFIG['detection_noise']
+            p1_stat += np.random.randn(2) * noise
+            p2_stat += np.random.randn(2) * noise
+        static_obs_per_cam[1][j].append(p2_stat.reshape(2, 1))
+        static_obs_per_cam[0][j].append(p1_stat.reshape(2, 1))
+        X_static_est[j] = geom.triangulate_points(K, R1, t1,
+                                                  K, R2, t2,
+                                                  p1_stat.reshape(2,1),
+                                                  p2_stat.reshape(2,1))[:, 0]
+        
+    return X_static_est, N_static, static_obs_per_cam
+
+X_static_est, N_static, static_obs_per_cam = initialize_static_points(X_static_true=X_static_true)
 
 for frame in range(num_frames):
     Xw = X_true[frame]
@@ -230,7 +232,7 @@ for frame in range(num_frames):
                 if pid < start_frame or pid > frame:
                     continue
                 cam_idxs.append(cam_id)
-                p_idxs.append(frame_to_local[pid])   # local index in window
+                p_idxs.append(frame_to_local[pid])
                 p_list.append(p.reshape(2,))
 
         if len(p_list) >= 4:  # need some constraints
@@ -238,7 +240,6 @@ for frame in range(num_frames):
             p_idxs = np.array(p_idxs, dtype=int)
             p_obs_all = np.column_stack(p_list)  # (2, M)
 
-            # camera centers from current poses
             C1 = -R1.T @ t1
             C2 = -R2.T @ t2
 
@@ -267,7 +268,6 @@ for frame in range(num_frames):
                 p_obs_all,
             )
 
-            # update poses
             R1, t1 = geom.pose_from_baseline(baseline_u, c0_used, rvecs_opt[0], s_opt[0])
             R2, t2 = geom.pose_from_baseline(baseline_u, c0_used, rvecs_opt[1], s_opt[1])
             
