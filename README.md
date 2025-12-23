@@ -23,7 +23,7 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
   - generates a circular 3D trajectory with `generate_circular_trajectory`,
   - projects points into both cameras with noise and triangulates them frame‑by‑frame,
   - periodically builds a sliding BA window (static + recent dynamic points) and calls `run_constrained_ba` to refine the right‑camera pose and the structure,
-  - visualizes the true and estimated trajectory, the camera frustums, and per‑frame rotation/position errors in real time via `PlotState`. [file:23][file:24]
+  - visualizes the true and estimated trajectory, the camera frustums, and per‑frame rotation/position errors in real time via `PlotState`.
 
 - **`ba_experiment.py`**  
   Provides a full experiment driver to *benchmark* BA against a non‑BA baseline:
@@ -31,7 +31,7 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
     - per‑frame trajectory error,
     - rotation and position error for each camera,
     - times at which BA is run, and the final mean error over the last frames.
-  - `run_experiment` runs multiple trials with and without BA using the same configuration and different seeds, measuring total runtime per trial. [file:24]
+  - `run_experiment` runs multiple trials with and without BA using the same configuration and different seeds, measuring total runtime per trial.
   - `plot_comparison` aggregates all trials and produces the summary figure (`ba_comparison_full.jpg`) showing:
     - mean ± std trajectory error over time,
     - mean ± std camera‑2 rotation and position error,
@@ -70,7 +70,7 @@ python main.py
 
 text
 
-This opens interactive Matplotlib windows that show the evolving 3D trajectory, camera poses, and rotation/position errors while BA refines the right‑camera pose over time. [file:23]
+This opens interactive Matplotlib windows that show the evolving 3D trajectory, camera poses, and rotation/position errors while BA refines the right‑camera pose over time.
 
 ### Benchmark BA vs non‑BA
 
