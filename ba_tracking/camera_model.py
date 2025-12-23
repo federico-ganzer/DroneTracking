@@ -121,6 +121,51 @@ class PinholeCamera:
     def get_intrinsic_matrix(self):
         """Return intrinsic matrix K."""
         return self.K.copy()
-
+    
+    
     def __repr__(self):
         return f"PinholeCamera(K=\n{self.K}, R=\n{self.R}, t={self.t.ravel()})"
+
+
+def camera_frustum(R, t, scale=2.0):
+    """
+    Returns 5 points defining a camera frustum in world coordinates.
+    """
+    # Camera frame frustum
+    frustum_cam = np.array([
+        [0, 0, 0],          # camera center
+        [ 1,  1,  2],
+        [-1,  1,  2],
+        [-1, -1,  2],
+        [ 1, -1,  2],
+    ]) * scale
+    # Transform to world frame
+    frustum_world = (R.T @ frustum_cam.T).T + t
+    return frustum_world
+def plot_frustum(ax, frustum, color="k", alpha=0.8):
+    lines = []
+    c = frustum[0]
+
+    # rays
+    for i in range(1, 5):
+        line, = ax.plot(
+            [c[0], frustum[i][0]],
+            [c[1], frustum[i][1]],
+            [c[2], frustum[i][2]],
+            color=color,
+            alpha=alpha,
+        )
+        lines.append(line)
+
+    # image plane
+    idx = [1, 2, 3, 4, 1]
+    line, = ax.plot(
+        frustum[idx, 0],
+        frustum[idx, 1],
+        frustum[idx, 2],
+        color=color,
+        alpha=alpha,
+    )
+    lines.append(line)
+
+    return lines   # ← THIS WAS MISSING

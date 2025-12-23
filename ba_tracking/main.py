@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from camera_model import PinholeCamera
+from camera_model import PinholeCamera, plot_frustum, camera_frustum
 import refinement as ba
 import geom
 from config import CONFIG
@@ -38,8 +38,8 @@ R_init = [geom.perturb_R(R, angle_sigma=np.deg2rad(CONFIG['rotation_noise_deg'])
 t_init = [geom.perturb_t(t, sigma=CONFIG['translation_noise']) for t in t_true]
 
 # current working poses (will be updated by BA)
-R1, R2 = R_init[0], R_init[1] # measured misclaibrated poses used
-t1, t2 = t_init[0], t_init[1] # measured misclaibrated poses used
+R1, R2 = R_true[0], R_init[1] 
+t1, t2 = t_true[0], t_init[1] # measured misclaibrated relative pose used
 
 cam1 = PinholeCamera(K, (R1, t1))
 cam2 = PinholeCamera(K, (R2, t2))
@@ -59,10 +59,9 @@ ax.set_zlabel("Z")
 ax.legend()
 max_range = np.ptp(X_true, axis=0).max()
 mid = X_true.mean(axis=0)
-ax.set_xlim(mid[0] - max_range / 2, mid[0] + max_range / 2)
-ax.set_ylim(mid[1] - max_range / 2, mid[1] + max_range / 2)
-ax.set_zlim(mid[2] - max_range / 2, mid[2] + max_range / 2)
-
+ax.set_xlim(mid[0] - max_range, mid[0] + max_range / 2)
+ax.set_ylim(mid[1] - max_range, mid[1] + max_range / 2)
+ax.set_zlim(0, mid[2] + max_range /2)
 rot_err_cam1 = np.zeros(num_frames)
 rot_err_cam2 = np.zeros(num_frames)
 pos_err_cam1 = np.zeros(num_frames)
@@ -77,6 +76,22 @@ pos_line1, = ax_pos.plot([], [], label="cam1 pos")
 pos_line2, = ax_pos.plot([], [], label="cam2 pos")
 ax_rot.legend()
 ax_pos.legend()
+
+fr_scale = 2.0
+
+fr_true_1 = camera_frustum(R_true[0], t_true[0], fr_scale)
+fr_true_2 = camera_frustum(R_true[1], t_true[1], fr_scale)
+
+fr_est_1  = camera_frustum(R1, t1, fr_scale)
+fr_est_2  = camera_frustum(R2, t2, fr_scale)
+
+true_lines_1 = plot_frustum(ax, fr_true_1, color="green", alpha=0.3)
+true_lines_2 = plot_frustum(ax, fr_true_2, color="green", alpha=0.3)
+
+est_lines_1  = plot_frustum(ax, fr_est_1,  color="red",   alpha=0.9)
+est_lines_2  = plot_frustum(ax, fr_est_2,  color="red",   alpha=0.9)
+
+
 #endregion
 
 obs_per_cam = [dict() for _ in range(n_cams)]
@@ -162,6 +177,23 @@ for frame in range(num_frames):
 
         ax_rot.relim(); ax_rot.autoscale_view()
         ax_pos.relim(); ax_pos.autoscale_view()
+        
+        fr_est_1 = camera_frustum(R1, t1, fr_scale)
+        fr_est_2 = camera_frustum(R2, t2, fr_scale)
+
+        def update_frustum(lines, fr):
+            c = fr[0]
+            for i in range(4):
+                lines[i].set_data([c[0], fr[i+1][0]],
+                                  [c[1], fr[i+1][1]])
+                lines[i].set_3d_properties([c[2], fr[i+1][2]])
+
+            idx = [1, 2, 3, 4, 1]
+            lines[4].set_data(fr[idx, 0], fr[idx, 1])
+            lines[4].set_3d_properties(fr[idx, 2])
+
+        update_frustum(est_lines_1, fr_est_1)
+        update_frustum(est_lines_2, fr_est_2)
     plot_update()
 
     if (frame > 0 and frame % CONFIG['ba_interval'] == 0
@@ -236,8 +268,6 @@ for frame in range(num_frames):
             # update poses
             R1, t1 = geom.pose_from_baseline(baseline_u, c0_used, rvecs_opt[0], s_opt[0])
             R2, t2 = geom.pose_from_baseline(baseline_u, c0_used, rvecs_opt[1], s_opt[1])
-
-            X_static_est = X_opt[:, :N_static].T
             
             X_est[start_frame:frame+1] = X_opt[:, N_static:].T
 

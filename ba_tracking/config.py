@@ -11,10 +11,10 @@ CONFIG = {
     
     #Trajectory parameters
     
-    'drone_center': np.array([0, 0, 80]),
+    'drone_center': np.array([0, 0, 60]),
     'drone_radius': 30.0,
     'drone_angular_velocity': 0.15,
-    'num_frames': 500,
+    'num_frames': 1500,
     'frame_rate': 30,
     
     #Perturbation parameters
@@ -22,11 +22,11 @@ CONFIG = {
     'translation_noise': 0.1,
     
     #Detection noise
-    'detection_noise': 0.5,
+    'detection_noise': 0.01,
     
     #Refinement parameters
     'refinement_enabled': True,
-    'stop_refinement': 300,
-    'ba_window_size': 10,
+    'stop_refinement': 10000,
+    'ba_window_size': 40,
     'ba_interval' : 20
 }
