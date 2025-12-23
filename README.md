@@ -1,16 +1,14 @@
 # Stereo Bundle Adjustment Proof of Concept
 
-This repository contains a small simulation framework to study the effect of constrained Bundle Adjustment (BA) on stereo trajectory reconstruction using synthetic data. It simulates a drone flying on a circular path observed by a stereo rig with noisy calibration and image measurements, and evaluates how much BA improves camera poses and 3D reconstruction.
+This repository contains a small simulation framework and proof-of-concept of constrained Bundle Adjustment (BA) on stereo trajectory reconstruction using simulated data. It simulates a drone flying on a circular path observed by a stereo rig with noisy calibration and image measurements, and evaluates how much BA improves camera poses and 3D reconstruction.
 
 The code is organized so that `main.py` runs an interactive single‑run visualization, while `ba_experiment.py` runs multiple Monte‑Carlo trials and produces quantitative comparison plots between BA and a simple non‑BA triangulation baseline.
 
 ## Features
-
-- Pinhole stereo camera model with configurable baseline, intrinsics, and image resolution.
-- Synthetic circular “drone” trajectory in 3D with configurable radius, height, angular velocity, and frame rate.
+- Synthetic circular “drone” trajectory in 3D with configurable radius, height, angular velocity, and frame rate. (Random path has not been tested yet)
 - Noisy initialization of the stereo rig (rotation and translation perturbations) and noisy image measurements to mimic real‑world calibration and detection errors.
 - Constrained BA that:
-  - optimizes camera pose increments along a known baseline direction,
+  - optimizes camera pose increments along a known baseline direction with reguralizers (Uses temporal smoothness and pose increment penalty). 
   - refines dynamic 3D points while keeping static anchor points fixed,
   - uses robust `scipy.optimize.least_squares` with Huber loss. 
 - Benchmark scripts that compare BA vs. a non‑BA triangulation pipeline over many trials, and visualize trajectory, pose, and runtime statistics.
