@@ -66,17 +66,13 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
 
 ### Single visual run (interactive BA)
 
-python main.py
-
-text
+**`main.py`**
 
 This opens interactive Matplotlib windows that show the evolving 3D trajectory, camera poses, and rotation/position errors while BA refines the right‑camera pose over time.
 
 ### Benchmark BA vs non‑BA
 
-python ba_experiment.py
-
-text
+**`ba_experiment.py`**
 
 This runs multiple trials with and without BA using the same configuration, then saves a comprehensive comparison figure (e.g. `ba_comparison_full.jpg`) and prints a textual statistical summary of accuracy and runtime.
 
@@ -87,13 +83,13 @@ To adjust the scenario (noise levels, trajectory, BA window size, number of fram
 - Python 3.x  
 - NumPy  
 - SciPy (for `optimize.least_squares`)  
-- OpenCV (`cv2`) for Rodrigues conversions  
+- OpenCV (`cv2`)
 - Matplotlib  
 
 Install them with:
 
 pip install numpy scipy opencv-python matplotlib
 
-text
 
-This repository is intended as a compact, reproducible setup for experimenting with constrained BA in a controlled stereo setting and for quantitatively comparing it to a simple triangulation pipeline. 
+
+This repository is intended as a compact, reproducible proof of concept, desined for experimenting with constrained BA in a simulated stereo setting. 
