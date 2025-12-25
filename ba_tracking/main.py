@@ -132,6 +132,33 @@ def initialize_static_points(X_static_true):
 
 X_static_est, N_static, static_obs_per_cam = initialize_static_points(X_static_true=X_static_true)
 
+def create_3d_kalman(dt=1/CONFIG['frame_rate'], process_noise=0.01, meas_noise=2.0):
+    kf = cv.KalmanFilter(6, 3)  # 6 states, 3 measurements
+
+    # State: [x, y, z, vx, vy, vz]
+    kf.transitionMatrix = np.array([
+        [1, 0, 0, dt, 0, 0],
+        [0, 1, 0, 0, dt, 0],
+        [0, 0, 1, 0, 0, dt],
+        [0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1]
+    ], dtype=np.float32)
+
+    # Measurement: [x, y, z]
+    kf.measurementMatrix = np.eye(3, 6, dtype=np.float32)
+    kf.processNoiseCov = np.eye(6, dtype=np.float32) * process_noise
+    kf.measurementNoiseCov = np.eye(3, dtype=np.float32) * meas_noise
+    kf.errorCovPost = np.eye(6, dtype=np.float32)
+    kf.statePost = np.zeros((6,1), dtype=np.float32)
+
+    return kf
+
+kf = create_3d_kalman(dt=1.0)
+kf_initialized = False
+
+X_kf_est = np.zeros_like(X_est)  # store KF smoothed trajectory
+
 def build_ba_window(obs_per_cam,
                     static_obs_per_cam,
                     X_est,
@@ -195,7 +222,20 @@ for frame in range(num_frames):
         obs_per_cam[1][frame]
     )[:, 0]
 
-    plotter.update(frame, X_est, R1, t1, R2, t2)
+    z = X_est[frame].reshape(3,1).astype(np.float32)
+    
+    if not kf_initialized:
+        kf.statePost[:3, 0] = z[:, 0]
+        kf.statePost[3:, 0] = 0.0
+        kf_initialized = True
+        
+    else:
+        kf.predict()
+        kf.correct(z)
+    
+    X_kf_est[frame] = kf.statePost[:3, 0]
+    
+    plotter.update(frame, X_kf_est, R1, t1, R2, t2)
 
     if (frame > 0 and
         frame % CONFIG['ba_interval'] == 0 and
@@ -227,7 +267,7 @@ for frame in range(num_frames):
 
             X_init = np.zeros((3, N_static + frame - start + 1))
             X_init[:, :N_static] = X_static_est.T
-            X_init[:, N_static:] = X_est[start:frame+1].T
+            X_init[:, N_static:] = X_kf_est[start:frame+1].T
 
             rvecs_opt, s_opt, X_opt = ba.run_constrained_ba(
                 K, baseline_u, C1,
@@ -245,7 +285,7 @@ for frame in range(num_frames):
             t1 = -R1 @ C1
             t2 = -R2 @ C2
 
-            X_est[start:frame+1] = X_opt[:, N_static:].T
+            X_kf_est[start:frame+1] = X_opt[:, N_static:].T
 
     plt.pause(0.01)
 

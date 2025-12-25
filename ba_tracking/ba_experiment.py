@@ -1,19 +1,14 @@
-"""
-Experiment script to compare Bundle Adjustment (BA) enabled vs disabled performance
-Runs multiple trials and generates comparison plots
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
 from copy import deepcopy
 import time
 
-# Import your modules (adjust as needed)
 import geom
 import refinement as ba
 from main import (CONFIG, K, baseline_u, c0, n_cams, 
-                  generate_circular_trajectory, camera_frustum)
+                  generate_circular_trajectory, camera_frustum,
+                  initialise_camera_poses, build_ba_window, create_3d_kalman)
 
 
 def run_single_trial(config, trial_num=0, verbose=False):
@@ -33,39 +28,20 @@ def run_single_trial(config, trial_num=0, verbose=False):
     s_true = np.array([0.0, 20.0])
     rvec_true = np.zeros((n_cams, 3), dtype=float)
     
-    # True poses
-    R_true, t_true = [], []
-    for i in range(n_cams):
-        R_i, t_i = geom.pose_from_baseline(
-            baseline_dir=baseline_u,
-            c0=c0,
-            rvec=rvec_true[i],
-            s=s_true[i]
-        )
-        R_true.append(R_i)
-        t_true.append(t_i)
-    
-    # Initialize with noise
-    R_init = [geom.perturb_R(R, angle_sigma=np.deg2rad(config['rotation_noise_deg'])) 
-              for R in R_true]
-    t_init = [geom.perturb_t(t, sigma=config['translation_noise']) 
-              for t in t_true]
-    
-    # Working poses
-    R1, R2 = R_true[0], R_init[1]
-    t1, t2 = t_true[0], t_init[1]
+    R1, R2, t1, t2, R_true, t_true = initialise_camera_poses(
+        s_true, rvec_true, baseline_dir=baseline_u, c0=c0
+    )
     
     # Initialize static points
     X_static_true = np.array([
-    [-10, -10, 40],
-    [-10,  10, 40],
-    [ 10, -10, 40],
-    [ 10,  10, 40],
-    [  0,   0, 30],
-    [  0,   0, 60],
-], dtype=float)
+        [-10, -10, 40],
+        [-10,  10, 40],
+        [ 10, -10, 40],
+        [ 10,  10, 40],
+        [  0,   0, 30],
+        [  0,   0, 60],
+    ], dtype=float)
 
-    
     N_static = X_static_true.shape[0]
     static_obs_per_cam = [[[] for _ in range(N_static)] for _ in range(n_cams)]
     X_static_est = np.zeros_like(X_static_true)
@@ -88,6 +64,11 @@ def run_single_trial(config, trial_num=0, verbose=False):
             p1_stat.reshape(2, 1),
             p2_stat.reshape(2, 1)
         )[:, 0]
+    
+    # Initialize Kalman filter
+    kf = create_3d_kalman(dt=1.0)
+    X_kf_est = np.zeros_like(X_est)
+    kf_initialized = False
     
     # Tracking arrays
     obs_per_cam = [dict() for _ in range(n_cams)]
@@ -117,8 +98,20 @@ def run_single_trial(config, trial_num=0, verbose=False):
             obs_per_cam[1][frame]
         )[:, 0]
         
-        # Compute errors
-        traj_errors[frame] = np.linalg.norm(X_est[frame] - X_true[frame])
+        # Apply Kalman filter
+        z = X_est[frame].reshape(3, 1).astype(np.float32)
+        if not kf_initialized:
+            kf.statePost[:3, 0] = z[:, 0]
+            kf.statePost[3:, 0] = 0.0
+            kf_initialized = True
+        else:
+            kf.predict()
+            kf.correct(z)
+        
+        X_kf_est[frame] = kf.statePost[:3, 0]
+        
+        # Compute errors using Kalman-filtered estimates
+        traj_errors[frame] = np.linalg.norm(X_kf_est[frame] - X_true[frame])
         
         for cam_id in range(2):
             R_curr = R1 if cam_id == 0 else R2
@@ -129,7 +122,7 @@ def run_single_trial(config, trial_num=0, verbose=False):
             # Rotation error (Frobenius norm)
             R_err = R_curr @ R_gt.T
             rot_errors[frame, cam_id] = np.rad2deg(
-                np.arccos((np.trace(R_err) - 1) / 2)
+                np.arccos(np.clip((np.trace(R_err) - 1) / 2, -1, 1))
             )
             
             # Position error
@@ -148,7 +141,7 @@ def run_single_trial(config, trial_num=0, verbose=False):
             # Build BA window
             cam_idxs, p_idxs, p_obs_all = build_ba_window(
                 obs_per_cam, static_obs_per_cam,
-                X_est, X_static_est,
+                X_kf_est, X_static_est,
                 start, frame, N_static
             )
             
@@ -165,7 +158,7 @@ def run_single_trial(config, trial_num=0, verbose=False):
                 
                 X_init = np.zeros((3, N_static + frame - start + 1))
                 X_init[:, :N_static] = X_static_est.T
-                X_init[:, N_static:] = X_est[start:frame+1].T
+                X_init[:, N_static:] = X_kf_est[start:frame+1].T
                 
                 rvecs_opt, s_opt, X_opt = ba.run_constrained_ba(
                     K, baseline_u, C1,
@@ -183,7 +176,7 @@ def run_single_trial(config, trial_num=0, verbose=False):
                 t1 = -R1 @ C1
                 t2 = -R2 @ C2
                 
-                X_est[start:frame+1] = X_opt[:, N_static:].T
+                X_kf_est[start:frame+1] = X_opt[:, N_static:].T
                 ba_refinements.append(frame)
                 
                 if verbose:
@@ -194,40 +187,10 @@ def run_single_trial(config, trial_num=0, verbose=False):
         'rot_errors': rot_errors,
         'pos_errors': pos_errors,
         'ba_refinements': ba_refinements,
-        'X_est': X_est,
+        'X_est': X_kf_est,
         'X_true': X_true,
         'final_mean_error': np.mean(traj_errors[-10:])  # Last 10 frames
     }
-
-
-def build_ba_window(obs_per_cam, static_obs_per_cam, X_est, X_static_est,
-                   start_frame, frame, N_static, max_static_obs=5):
-    """Build BA observation window"""
-    cam_idxs, p_idxs, p_list = [], [], []
-    
-    # Static points
-    for cam_id in range(2):
-        for j in range(N_static):
-            obs_list = static_obs_per_cam[cam_id][j]
-            for p in obs_list[-max_static_obs:]:
-                cam_idxs.append(cam_id)
-                p_idxs.append(j)
-                p_list.append(p.reshape(2,))
-    
-    frame_to_local = {
-        fid: i + N_static
-        for i, fid in enumerate(range(start_frame, frame + 1))
-    }
-    
-    # Dynamic points
-    for cam_id, obs in enumerate(obs_per_cam):
-        for pid, p in obs.items():
-            if start_frame <= pid <= frame:
-                cam_idxs.append(cam_id)
-                p_idxs.append(frame_to_local[pid])
-                p_list.append(p.reshape(2,))
-    
-    return (np.array(cam_idxs), np.array(p_idxs), np.column_stack(p_list))
 
 
 def run_experiment(n_trials=10, config_base=None):
@@ -276,16 +239,16 @@ def run_experiment(n_trials=10, config_base=None):
 
 def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_comparison'):
     """
-    Create comprehensive comparison plots
+    Create comprehensive comparison plots (without 3D trajectory plot)
     """
     n_trials = len(results_with_ba)
     num_frames = len(results_with_ba[0]['traj_errors'])
     
     # Setup figure with subplots
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(16, 10))
     
     # 1. Mean Trajectory Error Over Time
-    ax1 = plt.subplot(3, 3, 1)
+    ax1 = plt.subplot(2, 3, 1)
     traj_ba = np.array([r['traj_errors'] for r in results_with_ba])
     traj_no_ba = np.array([r['traj_errors'] for r in results_without_ba])
     
@@ -306,7 +269,7 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     ax1.grid(True, alpha=0.3)
     
     # 2. Rotation Error - Camera 2
-    ax2 = plt.subplot(3, 3, 2)
+    ax2 = plt.subplot(2, 3, 2)
     rot_ba_cam2 = np.array([r['rot_errors'][:, 1] for r in results_with_ba])
     rot_no_ba_cam2 = np.array([r['rot_errors'][:, 1] for r in results_without_ba])
     
@@ -328,7 +291,7 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     ax2.grid(True, alpha=0.3)
     
     # 3. Position Error - Camera 2
-    ax3 = plt.subplot(3, 3, 3)
+    ax3 = plt.subplot(2, 3, 3)
     pos_ba_cam2 = np.array([r['pos_errors'][:, 1] for r in results_with_ba])
     pos_no_ba_cam2 = np.array([r['pos_errors'][:, 1] for r in results_without_ba])
     
@@ -350,11 +313,10 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     ax3.grid(True, alpha=0.3)
     
     # 4. Final Error Distribution
-    ax4 = plt.subplot(3, 3, 4)
+    ax4 = plt.subplot(2, 3, 4)
     final_errors_ba = [r['final_mean_error'] for r in results_with_ba]
     final_errors_no_ba = [r['final_mean_error'] for r in results_without_ba]
     
-    positions = [1, 2]
     bp = ax4.boxplot([final_errors_ba, final_errors_no_ba],
                       labels=['With BA', 'Without BA'],
                       patch_artist=True)
@@ -364,68 +326,26 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     ax4.set_title('Final Trajectory Error Distribution')
     ax4.grid(True, alpha=0.3, axis='y')
     
-    # 5. Cumulative Error
-    ax5 = plt.subplot(3, 3, 5)
-    cum_ba = np.cumsum(mean_ba)
-    cum_no_ba = np.cumsum(mean_no_ba)
-    ax5.plot(frames, cum_ba, 'b-', label='With BA', linewidth=2)
-    ax5.plot(frames, cum_no_ba, 'r-', label='Without BA', linewidth=2)
-    ax5.set_xlabel('Frame')
-    ax5.set_ylabel('Cumulative Error')
-    ax5.set_title('Cumulative Trajectory Error')
-    ax5.legend()
-    ax5.grid(True, alpha=0.3)
-    
-    # 6. Error Improvement Percentage
-    ax6 = plt.subplot(3, 3, 6)
-    improvement = ((mean_no_ba - mean_ba) / mean_no_ba) * 100
-    ax6.plot(frames, improvement, 'g-', linewidth=2)
-    ax6.axhline(y=0, color='k', linestyle='--', alpha=0.5)
-    ax6.set_xlabel('Frame')
-    ax6.set_ylabel('Improvement (%)')
-    ax6.set_title('BA Error Reduction (% improvement)')
-    ax6.grid(True, alpha=0.3)
-    ax6.fill_between(frames, 0, improvement, where=(improvement > 0), 
-                     alpha=0.3, color='g', label='Improvement')
-    ax6.fill_between(frames, 0, improvement, where=(improvement < 0),
-                     alpha=0.3, color='r', label='Degradation')
-    ax6.legend()
-    
-    # 7. Example Trajectory (first trial)
-    ax7 = plt.subplot(3, 3, 7, projection='3d')
-    X_true = results_with_ba[0]['X_true']
-    X_est_ba = results_with_ba[0]['X_est']
-    X_est_no_ba = results_without_ba[0]['X_est']
-    
-    ax7.plot(X_true[:, 0], X_true[:, 1], X_true[:, 2], 
-             'k-', label='Ground Truth', linewidth=2)
-    ax7.plot(X_est_ba[:, 0], X_est_ba[:, 1], X_est_ba[:, 2],
-             'b--', label='With BA', linewidth=1.5, alpha=0.7)
-    ax7.plot(X_est_no_ba[:, 0], X_est_no_ba[:, 1], X_est_no_ba[:, 2],
-             'r--', label='Without BA', linewidth=1.5, alpha=0.7)
-    ax7.set_xlabel('X')
-    ax7.set_ylabel('Y')
-    ax7.set_zlabel('Z')
-    ax7.set_title('Example Trajectory (Trial 1)')
-    ax7.legend()
-    
-    # 8. Computation Time Comparison
-    ax8 = plt.subplot(3, 3, 8)
+    # 5. Computation Time Comparison
+    ax5 = plt.subplot(2, 3, 5)
     times_ba = [r['time'] for r in results_with_ba]
     times_no_ba = [r['time'] for r in results_without_ba]
     
-    bp2 = ax8.boxplot([times_ba, times_no_ba],
+    bp2 = ax5.boxplot([times_ba, times_no_ba],
                        labels=['With BA', 'Without BA'],
                        patch_artist=True)
     bp2['boxes'][0].set_facecolor('lightblue')
     bp2['boxes'][1].set_facecolor('lightcoral')
-    ax8.set_ylabel('Computation Time (s)')
-    ax8.set_title('Computation Time Comparison')
-    ax8.grid(True, alpha=0.3, axis='y')
+    ax5.set_ylabel('Computation Time (s)')
+    ax5.set_title('Computation Time Comparison')
+    ax5.grid(True, alpha=0.3, axis='y')
     
-    # 9. Statistical Summary
-    ax9 = plt.subplot(3, 3, 9)
-    ax9.axis('off')
+    # 6. Statistical Summary
+    ax6 = plt.subplot(2, 3, 6)
+    ax6.axis('off')
+    
+    improvement_pct = ((np.mean(final_errors_no_ba) - np.mean(final_errors_ba)) / 
+                       np.mean(final_errors_no_ba) * 100)
     
     summary_text = f"""
     STATISTICAL SUMMARY
@@ -437,7 +357,7 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     With BA:    {np.mean(final_errors_ba):.3f} ± {np.std(final_errors_ba):.3f}
     Without BA: {np.mean(final_errors_no_ba):.3f} ± {np.std(final_errors_no_ba):.3f}
     
-    Improvement: {((np.mean(final_errors_no_ba) - np.mean(final_errors_ba)) / np.mean(final_errors_no_ba) * 100):.1f}%
+    Improvement: {improvement_pct:.1f}%
     
     Overall Mean Trajectory Error:
     With BA:    {np.mean(mean_ba):.3f}
@@ -452,12 +372,11 @@ def plot_comparison(results_with_ba, results_without_ba, save_prefix='ba_compari
     Without BA: {np.mean(times_no_ba):.2f}s ± {np.std(times_no_ba):.2f}s
     """
     
-    ax9.text(0.1, 0.5, summary_text, fontsize=9, family='monospace',
+    ax6.text(0.05, 0.5, summary_text, fontsize=9, family='monospace',
              verticalalignment='center')
     
     plt.tight_layout()
     plt.savefig(f'{save_prefix}_full.png', dpi=300, bbox_inches='tight')
-    print(f"\nSaved plot: {save_prefix}_full.png")
     
     # Print summary to console
     print(summary_text)

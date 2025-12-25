@@ -144,7 +144,7 @@ def main():
             x, y, w, h, cx, cy = best_cnt
             roi = frame[y:y+h, x:x+w]
 
-            if i % 5 == 0 and STATE == 'Verifying...' and is_drone(roi):
+            if i % 5 == 0 and STATE == 'Verifying...' and is_drone(roi): # can add an additional conditions to avoid running yolo on bad roi's
                 STATE = 'DRONE'
 
             if STATE == 'DRONE':
@@ -186,7 +186,6 @@ def main():
         fig.canvas.draw_idle()
         fig.canvas.flush_events()
 
-
         key = cv.waitKey(30) & 0xFF
         if key == 27:
             break
@@ -196,6 +195,7 @@ def main():
     
     plt.ioff()
     plt.show()
+    
     cap.release()
     cv.destroyAllWindows()
 
