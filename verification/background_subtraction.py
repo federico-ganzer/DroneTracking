@@ -35,7 +35,7 @@ def create_kalman_filter(dt=1.0):
 
     return kf
 
-def is_drone(roi, conf_thresh = 0.3): # Threshold is low due to poor pretrained model used (model is trained on google images)
+def is_drone(roi, conf_thresh = 0.1): # Threshold is low due to poor pretrained model used (model is trained on google images)
     if roi is None or roi.size == 0:
         return False
     
