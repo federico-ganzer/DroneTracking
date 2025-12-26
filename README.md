@@ -1,4 +1,4 @@
-# Stereo Bundle Adjustment Proof of Concept
+# Drone Tracking Proof of Concept
 
 This repository contains a small simulation framework and proof-of-concept of constrained Bundle Adjustment (BA) on stereo trajectory reconstruction using simulated data. It simulates a drone flying on a circular path observed by a stereo rig with noisy calibration and image measurements, and evaluates how much BA improves camera poses and 3D reconstruction.
 
