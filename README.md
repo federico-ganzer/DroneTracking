@@ -59,7 +59,7 @@ The code is organized so that `main.py` runs an interactive single‑run visuali
   Contains utilities for simple foreground/background separation in real image streams, which can be used when extending the framework to real data.
 
 - **`config.py`**  
-  Central configuration dictionary controlling camera intrinsics, baseline length, trajectory parameters, noise levels, and BA scheduling (window size, interval, refinement stop frame).
+  Central configuration dictionary controlling camera intrinsics, baseline length, trajectory parameters, noise levels, and BA scheduling (window size, interval, refinement stop frame). Refinement parameters need to be updated in `refinement.py`.
 
 ## Usage
 
@@ -85,10 +85,6 @@ To adjust the scenario (noise levels, trajectory, BA window size, number of fram
 - OpenCV (`cv2`)
 - Matplotlib  
 
-Install them with:
-
-pip install numpy scipy opencv-python matplotlib
 
 
 
-This repository is intended as a compact, reproducible proof of concept, desined for experimenting with constrained BA in a simulated stereo setting. 
