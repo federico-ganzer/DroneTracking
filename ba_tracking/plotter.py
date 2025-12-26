@@ -99,7 +99,8 @@ def camera_frustum(R, t, scale=2.0):
         [ 1, -1,  2],
     ]) * scale
     # Transform to world frame
-    frustum_world = (R.T @ frustum_cam.T).T + t
+    C = -R.T @ t
+    frustum_world = (R.T @ frustum_cam.T).T + C
     
     return frustum_world
 

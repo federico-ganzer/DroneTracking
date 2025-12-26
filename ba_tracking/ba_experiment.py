@@ -392,7 +392,6 @@ if __name__ == "__main__":
     
     results_ba, results_no_ba = run_experiment(n_trials=N_TRIALS, config_base=CONFIG)
     
-    # Generate plots
     plot_comparison(results_ba, results_no_ba, save_prefix='ba_comparison')
     
-    print("\nExperiment complete!")
+
