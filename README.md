@@ -4,7 +4,7 @@ This repository contains a small simulation framework and proof-of-concept of co
 
 The code is organized so that `main.py` runs an interactive single‑run visualization, while `ba_experiment.py` runs multiple trials and produces quantitative comparison plots between BA and a simple non‑BA triangulation baseline.
 
-In the folder `verification` there is a the initial stage of the proposed pipeline where background subtraction and a lightweight pre-trained model (rujutashashikanjoshi/yolo12-drone-detection-0205-100m)is used to detect, classify and track the 2D position of a drone.
+In the folder `verification` there is a the initial stage of the proposed pipeline where background subtraction and a lightweight pre-trained model (rujutashashikanjoshi/yolo12-drone-detection-0205-100m) is used to detect, classify and track the 2D position of a drone.
 
 ## Features
 - Synthetic circular “drone” trajectory in 3D with configurable radius, height, angular velocity, and frame rate. (Random path has not been tested yet)
