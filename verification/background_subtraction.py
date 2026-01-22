@@ -85,7 +85,7 @@ def main():
     ax.set_ylabel("y (pixels)")
 
     ax.set_xlim(0, W)
-    ax.set_ylim(H, 0)   # inverted y-axis
+    ax.set_ylim(H, 0)
     fig.show()
 
     meas_line, = ax.plot([], [], 'g.', label="Measurements", alpha=0.5)

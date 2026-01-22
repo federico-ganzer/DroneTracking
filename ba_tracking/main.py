@@ -106,7 +106,7 @@ X_static_true = np.array([
     [  0,   0, 60],
 ], dtype=float)
 
-
+#region Initialization
 def initialize_static_points(X_static_true):
     N_static = X_static_true.shape[0]
     static_obs_per_cam = [ [[] for _ in range(N_static)]  # cam 0
@@ -201,6 +201,7 @@ plotter = PlotState(ax, ax_rot, ax_pos,
                     fr_true_1, fr_true_2,
                     est_lines_1, est_lines_2,
                     fr_scale)
+#endregion
 
 for frame in range(num_frames):
     # observe
