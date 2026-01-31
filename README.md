@@ -57,8 +57,8 @@ In the folder `verification` there is a the initial stage of the proposed pipeli
 - **`plotter.py`**  
   Real‑time visualization helper used by `main.py` to update the 3D trajectory, camera frustums, and error plots as the sequence progresses.
 
-- **`background_subtraction.py`** (optional)  
-  Contains utilities for simple foreground/background separation in real image streams, which can be used when extending the framework to real data.
+- **`background_subtraction.py`**
+  Contains utilities for simple foreground/background separation in real image streams, which can be used in the full pipeline to identify in frame drone position.
 
 - **`config.py`**  
   Central configuration dictionary controlling camera intrinsics, baseline length, trajectory parameters, noise levels, and BA scheduling (window size, interval, refinement stop frame). Refinement parameters need to be updated in `refinement.py`.
